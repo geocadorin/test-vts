@@ -122,7 +122,7 @@
             <button 
                 id="cta-button" 
                 class="opacity-0 translate-y-8 pointer-events-none transition-all duration-1000 ease-out w-full h-full bg-hive-purple hover:bg-hive-purpleHover text-white font-bold text-[clamp(0.75rem,2.5vw,1.15rem)] whitespace-nowrap px-4 rounded-lg md:rounded-xl uppercase tracking-wide border border-white/20"
-                onclick="alert('Integração de checkout/cadastro acontece aqui!')"
+                onclick="onClickCta()"
             >
                 Quero reduzir minha conta de energia
             </button>
@@ -170,6 +170,12 @@
                 clearInterval(timeTrackerInterval);
             }
         }
+
+        //Direciona para a url de compra
+        function onClickCta(){
+            window.location.href = "https://contaenergia.hiveglobal.com.br/?planId=de9ef5b8d2eeaae8&sellerId=israelnpereira";
+        }
+
 
         // Checa o tempo atual de reprodução
         function checkVideoTime() {
