@@ -2,8 +2,8 @@
 <html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Constelação de Órion</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Constelação de Órion - Mobile First</title>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600&display=swap');
 
@@ -11,82 +11,96 @@
             margin: 0;
             padding: 0;
             box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
         }
 
         body, html {
             width: 100%;
             height: 100%;
             overflow: hidden;
-            background-color: #050814;
+            background-color: #040712;
             font-family: 'Inter', sans-serif;
             color: #ffffff;
-            /* Gradiente radial para simular a profundidade do espaço */
-            background: radial-gradient(circle at center, #0a1128 0%, #03050d 100%);
         }
 
         #skyCanvas {
             display: block;
             width: 100%;
             height: 100%;
+            position: absolute;
+            top: 0;
+            left: 0;
+            z-index: 1;
         }
 
-        /* UI/UX: Painel Glassmorphism */
-        .info-panel {
+        /* UI/UX: Layout focado em mobile (Mobile-First) */
+        .ui-container {
             position: absolute;
-            top: 40px;
-            left: 40px;
-            max-width: 350px;
-            background: rgba(255, 255, 255, 0.03);
-            backdrop-filter: blur(12px);
-            -webkit-backdrop-filter: blur(12px);
-            padding: 24px;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 2;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            padding: 20px;
+            pointer-events: none; /* Permite tocar no canvas através dos espaços vazios */
+        }
+
+        .info-panel {
+            background: rgba(5, 10, 25, 0.6);
+            backdrop-filter: blur(15px);
+            -webkit-backdrop-filter: blur(15px);
+            padding: 16px 20px;
             border-radius: 16px;
             border: 1px solid rgba(255, 255, 255, 0.08);
-            box-shadow: 0 4px 30px rgba(0, 0, 0, 0.5);
-            pointer-events: none; /* Permite que o mouse interaja com o canvas através do painel */
-            animation: fadeIn 1s ease-out;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
+            pointer-events: auto; /* Reativa o toque para o painel se necessário */
+            max-width: 100%;
         }
 
         .info-panel h1 {
-            font-size: 22px;
+            font-size: 18px;
             font-weight: 600;
-            margin-bottom: 8px;
-            letter-spacing: 0.5px;
-            background: linear-gradient(90deg, #ffffff, #a0aec0);
+            margin-bottom: 4px;
+            background: linear-gradient(90deg, #ffffff, #cbd5e1);
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
         }
 
         .info-panel p {
-            font-size: 14px;
-            line-height: 1.6;
-            color: #a0aec0;
+            font-size: 12px;
+            line-height: 1.5;
+            color: #94a3b8;
             font-weight: 300;
         }
 
         .hint {
-            position: absolute;
-            bottom: 40px;
-            width: 100%;
             text-align: center;
-            font-size: 13px;
+            font-size: 11px;
             color: rgba(255, 255, 255, 0.4);
-            pointer-events: none;
-            letter-spacing: 1px;
+            letter-spacing: 0.5px;
+            padding-bottom: 10px;
+            animation: pulse 2s infinite ease-in-out;
         }
 
-        @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(-10px); }
-            to { opacity: 1; transform: translateY(0); }
+        @keyframes pulse {
+            0%, 100% { opacity: 0.3; }
+            50% { opacity: 0.8; }
         }
 
-        @media (max-width: 768px) {
-            .info-panel {
-                top: 20px;
-                left: 20px;
-                right: 20px;
-                max-width: none;
+        /* Ajustes finos para telas maiores (Desktop) */
+        @media (min-width: 768px) {
+            .ui-container {
+                padding: 40px;
             }
+            .info-panel {
+                max-width: 360px;
+            }
+            .info-panel h1 { font-size: 22px; }
+            .info-panel p { font-size: 14px; }
+            .hint { font-size: 13px; text-align: left; }
         }
     </style>
 </head>
@@ -94,12 +108,13 @@
 
     <canvas id="skyCanvas"></canvas>
 
-    <div class="info-panel">
-        <h1>Constelação de Órion</h1>
-        <p>O Caçador. Uma das constelações mais proeminentes e reconhecíveis do céu noturno, abrigando estrelas supergigantes e as famosas "Três Marias" (Cinturão de Órion).</p>
+    <div class="ui-container">
+        <div class="info-panel">
+            <h1>Constelação de Órion</h1>
+            <p>O Caçador. Toque ou passe o dedo sobre as estrelas brilhantes para ver os nomes de cada uma delas.</p>
+        </div>
+        <div class="hint">Toque nas estrelas para interagir</div>
     </div>
-
-    <div class="hint">Passe o mouse sobre as estrelas para interagir</div>
 
     <script>
         const canvas = document.getElementById('skyCanvas');
@@ -107,90 +122,161 @@
 
         let width, height;
         let backgroundStars = [];
-        let mouse = { x: -1000, y: -1000 };
+        let touchPos = { x: -1000, y: -1000 };
 
-        // Mapeamento das estrelas principais de Órion (Coordenadas relativas ao centro)
-        // Cores baseadas nas classificações espectrais reais
+        // Coordenadas normalizadas (de -1 a 1). 
+        // Garante que o desenho mantenha a proporção geométrica perfeita em qualquer tela.
         const orionStars = [
-            { id: 0, name: "Betelgeuse", x: -90, y: -150, color: "#ff8b5e", r: 6 },  // Supergigante vermelha
-            { id: 1, name: "Meissa",     x: 0,   y: -210, color: "#d1e8ff", r: 3.5 },
-            { id: 2, name: "Bellatrix",  x: 90,  y: -120, color: "#d1e8ff", r: 4.5 },
-            { id: 3, name: "Alnitak",    x: -40, y: -10,  color: "#d1e8ff", r: 4.5 },
-            { id: 4, name: "Alnilam",    x: 0,   y: 0,    color: "#d1e8ff", r: 5 },
-            { id: 5, name: "Mintaka",    x: 40,  y: 10,   color: "#d1e8ff", r: 4 },
-            { id: 6, name: "Saiph",      x: -70, y: 160,  color: "#d1e8ff", r: 4.5 },
-            { id: 7, name: "Rigel",      x: 100, y: 140,  color: "#a3c2ff", r: 6.5 }  // Supergigante azul
+            { id: 0, name: "Betelgeuse", x: -0.5, y: -0.7, color: "#ff9f68", r: 6 },
+            { id: 1, name: "Meissa",     x: 0.0,  y: -0.9, color: "#d1e8ff", r: 3.5 },
+            { id: 2, name: "Bellatrix",  x: 0.5,  y: -0.6, color: "#d1e8ff", r: 4.5 },
+            { id: 3, name: "Alnitak",    x: -0.2, y: -0.05,color: "#d1e8ff", r: 4.5 },
+            { id: 4, name: "Alnilam",    x: 0.0,  y: 0.0,  color: "#e2f0ff", r: 5 },
+            { id: 5, name: "Mintaka",    x: 0.2,  y: 0.05, color: "#d1e8ff", r: 4 },
+            { id: 6, name: "Saiph",      x: -0.4, y: 0.7,  color: "#d1e8ff", r: 4.5 },
+            { id: 7, name: "Rigel",      x: 0.5,  y: 0.6,  color: "#a3c2ff", r: 6.5 }
         ];
 
-        // Ligações que formam o desenho da constelação
         const connections = [
-            [0, 1], [2, 1], // Cabeça (Meissa) para os ombros
-            [0, 3], [2, 5], // Ombros para o cinturão
-            [3, 4], [4, 5], // Cinturão (Três Marias)
-            [3, 6], [5, 7]  // Cinturão para os pés
+            [0, 1], [2, 1],
+            [0, 3], [2, 5],
+            [3, 4], [4, 5],
+            [3, 6], [5, 7]
         ];
 
-        // Função para redimensionar o canvas
         function resize() {
-            width = canvas.width = window.innerWidth;
-            height = canvas.height = window.innerHeight;
+            // Ajusta o tamanho do canvas levando em conta os pixels de alta densidade (Retina/Displays modernos)
+            const dpr = window.devicePixelRatio || 1;
+            width = window.innerWidth;
+            height = window.innerHeight;
+            
+            canvas.width = width * dpr;
+            canvas.height = height * dpr;
+            ctx.scale(dpr, dpr);
+
             initBackgroundStars();
         }
 
-        // Gera o campo estelar de fundo
         function initBackgroundStars() {
             backgroundStars = [];
-            const numStars = Math.floor((width * height) / 2500); // Densidade baseada na tela
+            const numStars = Math.floor((width * height) / 3000); 
             for (let i = 0; i < numStars; i++) {
                 backgroundStars.push({
                     x: Math.random() * width,
                     y: Math.random() * height,
-                    r: Math.random() * 1.5,
+                    r: Math.random() * 1.2,
                     opacity: Math.random(),
-                    twinkleSpeed: 0.02 + Math.random() * 0.03
+                    twinkleSpeed: 0.01 + Math.random() * 0.02
                 });
             }
         }
 
-        // Monitora o mouse para interatividade (Hover)
-        window.addEventListener('mousemove', (e) => {
-            mouse.x = e.clientX;
-            mouse.y = e.clientY;
-        });
+        // Sistema de Interação unificado (Mouse + Touch Screen)
+        function updateInteraction(e) {
+            if (e.touches && e.touches.length > 0) {
+                touchPos.x = e.touches[0].clientX;
+                touchPos.y = e.touches[0].clientY;
+            } else {
+                touchPos.x = e.clientX;
+                touchPos.y = e.clientY;
+            }
+        }
 
+        function clearInteraction() {
+            touchPos.x = -1000;
+            touchPos.y = -1000;
+        }
+
+        window.addEventListener('mousemove', updateInteraction);
+        window.addEventListener('touchstart', updateInteraction, { passive: true });
+        window.addEventListener('touchmove', updateInteraction, { passive: true });
+        window.addEventListener('touchend', clearInteraction);
+        window.addEventListener('mouseleave', clearInteraction);
         window.addEventListener('resize', resize);
 
-        // Loop principal de renderização
         function animate() {
-            // Limpa o frame anterior (usando fillRect com opacidade para rastro/suavidade)
             ctx.clearRect(0, 0, width, height);
 
-            // 1. Desenhar estrelas de fundo
+            // 1. Estrelas de fundo ciscando
             backgroundStars.forEach(star => {
                 star.opacity += star.twinkleSpeed;
                 if (star.opacity > 1 || star.opacity < 0.2) {
                     star.twinkleSpeed = -star.twinkleSpeed;
                 }
-                
                 ctx.beginPath();
                 ctx.arc(star.x, star.y, star.r, 0, Math.PI * 2);
                 ctx.fillStyle = `rgba(255, 255, 255, ${star.opacity})`;
                 ctx.fill();
             });
 
-            // Configurações de escala e centro para Órion
+            // Lógica Proporcional Mobile-First:
+            // Define uma área quadrada centralizada baseada na menor dimensão da tela para que nada saia dela.
+            const minDimension = Math.min(width, height);
+            const boxSize = minDimension * 0.65; // Ocupa 65% do espaço visível seguro
             const centerX = width / 2;
-            const centerY = height / 2;
-            // Escala responsiva baseada na menor dimensão da tela
-            const scale = Math.min(width, height) / 600; 
+            const centerY = height / 2 + (height > width ? 40 : 0); // Empurra levemente para baixo no celular devido ao cabeçalho
 
-            // 2. Desenhar as linhas da constelação
-            ctx.strokeStyle = "rgba(255, 255, 255, 0.15)";
-            ctx.lineWidth = 1.5;
-            ctx.setLineDash([5, 5]); // Linha tracejada elegante
+            // Função auxiliar para mapear as coordenadas virtuais (-1 a 1) para pixels reais da tela
+            function getCanvasCoords(star) {
+                return {
+                    x: centerX + (star.x * (boxSize / 2)),
+                    y: centerY + (star.y * (boxSize / 2))
+                };
+            }
+
+            // 2. Linhas de conexão
+            ctx.strokeStyle = "rgba(255, 255, 255, 0.18)";
+            ctx.lineWidth = 1.2;
+            ctx.setLineDash([4, 4]);
             ctx.beginPath();
             
             connections.forEach(conn => {
-                const s1 = orionStars[conn[0]];
-                const s2 =
+                const pt1 = getCanvasCoords(orionStars[conn[0]]);
+                const pt2 = getCanvasCoords(orionStars[conn[1]]);
+                ctx.moveTo(pt1.x, pt1.y);
+                ctx.lineTo(pt2.x, pt2.y);
+            });
+            ctx.stroke();
+            ctx.setLineDash([]); 
 
+            const time = Date.now() * 0.003;
+
+            // 3. Renderizar estrelas principais e detecção de toque
+            orionStars.forEach(star => {
+                const coords = getCanvasCoords(star);
+
+                // Hitbox aumentada no mobile: 35 pixels de raio facilita o clique com o dedo
+                const dist = Math.hypot(touchPos.x - coords.x, touchPos.y - coords.y);
+                const isInteracting = dist < 35;
+
+                const pulse = Math.sin(time + star.id) * 0.4 + 0.6;
+                const dynamicRadius = isInteracting ? star.r * 1.6 : star.r + (pulse * 1);
+
+                // Efeito Glow (Brilho Espacial)
+                ctx.shadowBlur = isInteracting ? 20 : 12;
+                ctx.shadowColor = star.color;
+
+                ctx.beginPath();
+                ctx.arc(coords.x, coords.y, dynamicRadius, 0, Math.PI * 2);
+                ctx.fillStyle = isInteracting ? "#ffffff" : star.color;
+                ctx.fill();
+
+                ctx.shadowBlur = 0; // Reset do glow
+
+                // Rótulo dos Nomes
+                ctx.fillStyle = isInteracting ? "#ffffff" : "rgba(255, 255, 255, 0.55)";
+                ctx.font = isInteracting ? "600 13px Inter, sans-serif" : "400 11px Inter, sans-serif";
+                
+                // Posiciona o texto elegantemente ao lado da estrela
+                ctx.fillText(star.name, coords.x + 10, coords.y + 4);
+            });
+
+            requestAnimationFrame(animate);
+        }
+
+        // Start
+        resize();
+        animate();
+    </script>
+</body>
+</html>
